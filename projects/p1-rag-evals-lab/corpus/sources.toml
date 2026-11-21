@@ -1,0 +1,51 @@
+# Public corpus for the P1 retrieval evals.
+#
+# Nothing listed here is committed to this repo: `fetch_corpus.py` downloads
+# each source at the pinned commit into data/corpus/ (gitignored). That keeps
+# runs reproducible without redistributing third-party documentation.
+#
+# To move to a newer version, change `commit` and re-run the fetch. The golden
+# set is tied to these commits: a new commit can invalidate answers.
+
+[[source]]
+name = "traefik"
+repo = "https://github.com/traefik/traefik"
+commit = "6f79f8c03bf3ab14442c433f194caadd26aed05c"
+license = "MIT"
+include = ["docs/content"]
+extensions = [".md"]
+
+[[source]]
+name = "immich"
+repo = "https://github.com/immich-app/immich"
+commit = "9b3d3d861ccf5f52f05a2a53c3a8bfb5b9bb2aee"
+license = "AGPL-3.0"
+include = ["docs/docs"]
+extensions = [".md", ".mdx"]
+
+[[source]]
+name = "home-assistant"
+repo = "https://github.com/home-assistant/home-assistant.io"
+commit = "c7fc8055ec83e1931b427e4990a6f9062be278e9"
+license = "CC-BY-NC-SA-4.0"
+# The general docs plus the integrations a typical homelab actually runs.
+# All 1,600+ integrations would swamp the other two sources.
+include = [
+  "source/_docs",
+  "source/_integrations/mqtt.markdown",
+  "source/_integrations/matter.markdown",
+  "source/_integrations/zha.markdown",
+  "source/_integrations/esphome.markdown",
+  "source/_integrations/shelly.markdown",
+  "source/_integrations/template.markdown",
+  "source/_integrations/script.markdown",
+  "source/_integrations/recorder.markdown",
+  "source/_integrations/history.markdown",
+  "source/_integrations/logbook.markdown",
+  "source/_integrations/backup.markdown",
+  "source/_integrations/http.markdown",
+  "source/_integrations/person.markdown",
+  "source/_integrations/telegram_bot.markdown",
+  "source/_integrations/ollama.markdown",
+]
+extensions = [".markdown", ".md"]

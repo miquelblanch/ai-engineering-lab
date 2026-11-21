@@ -8,7 +8,7 @@ The write-ups (case studies, learning log, progress) live on my site: **[miquel.
 
 | # | Project | Question it answers | Status |
 | --- | --- | --- | --- |
-| P1 | [RAG Evals Lab](projects/p1-rag-evals-lab/) | Does hybrid retrieval actually help on a real operational corpus? | Starts Dec 2026 |
+| P1 | [RAG Evals Lab](projects/p1-rag-evals-lab/) | Does hybrid retrieval actually help on a real operational corpus? | Corpus ready · harness starts Dec 2026 |
 | P2 | [homelab-mcp + agent evals](projects/p2-homelab-mcp/) | How well does an ops agent do on its own incident history? | Planned |
 | P3 | [Evals in CI](projects/p3-evals-ci/) | Can LLM quality gate a merge the way tests do? | Planned |
 | P4 | [Local model benchmark](projects/p4-local-models/) | What can a Mac Mini M4 Pro really serve, on real tasks? | Planned |

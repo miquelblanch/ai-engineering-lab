@@ -10,6 +10,8 @@ __pycache__/
 .env
 .env.*
 data/private/
+# Downloaded public corpus: fetched at pinned commits, never redistributed
+data/corpus/
 *.sqlite
 *.db
 
