@@ -23,4 +23,6 @@ paths = [
   '''(^|/)\.git/''',
   '''(^|/)\.ruff_cache/''',
   '''(^|/)\.pytest_cache/''',
+  # Downloaded third-party docs (gitignored): full of example LAN addresses.
+  '''(^|/)data/corpus/''',
 ]
