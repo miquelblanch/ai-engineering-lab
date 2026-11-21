@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Local data and secrets: never committed
+.env
+.env.*
+data/private/
+*.sqlite
+*.db
+
+# Raw eval runs are regenerated; publish summaries, not raw outputs
+runs/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+.claude/settings.local.json

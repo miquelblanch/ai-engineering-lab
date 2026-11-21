@@ -1,0 +1,30 @@
+[project]
+name = "ai-engineering-lab"
+version = "0.1.0"
+description = "Code for Miquel Blanch's AI Engineering learning projects: RAG evals, agent evals, MCP, local models and fine-tuning."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+dependencies = []
+
+# One dependency group per project, added when the project starts:
+#   uv sync --group p1
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.8",
+]
+
+[tool.uv]
+package = false
+default-groups = ["dev"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "projects"]

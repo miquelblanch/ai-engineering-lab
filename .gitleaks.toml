@@ -1,0 +1,26 @@
+# Default gitleaks rules plus the ones specific to this repo.
+[extend]
+useDefault = true
+
+[[rules]]
+id = "private-ipv4"
+description = "Private LAN address: home network topology stays out of this repo"
+regex = '''\b(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3})\b'''
+tags = ["topology"]
+
+[[rules]]
+id = "absolute-host-path"
+description = "Absolute path from the author's machine"
+regex = '''/(Volumes|Users)/[A-Za-z]'''
+tags = ["path"]
+
+[allowlist]
+# `gitleaks --no-git` ignores .gitignore and walks the whole tree. A virtualenv
+# carries absolute paths in its shebangs and pyvenv.cfg, so without these
+# exclusions every local run is noisy, and a noisy scanner ends up ignored.
+paths = [
+  '''(^|/)\.venv/''',
+  '''(^|/)\.git/''',
+  '''(^|/)\.ruff_cache/''',
+  '''(^|/)\.pytest_cache/''',
+]
