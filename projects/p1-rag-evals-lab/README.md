@@ -2,7 +2,7 @@
 
 **Question:** does hybrid retrieval (dense + BM25, fused with reciprocal rank fusion) actually beat dense search alone on a real operational corpus, and by how much?
 
-**Status:** corpus ready; eval harness starts December 2026.
+**Status:** corpus and golden set ready; eval harness next.
 
 ## Two corpora, two roles
 
@@ -38,7 +38,7 @@ The harness will read it from a local path given by the `PRIVATE_CORPUS_DIR` env
 
 ## Plan
 
-- A hand-labelled golden set, including identifier-heavy questions where dense search is expected to fail.
+- ~~A hand-labelled golden set~~ Done: [100 questions](golden/README.md), 48 built around exact identifiers and 52 in plain language, each with its source document and a verbatim quote.
 - An eval harness with pytest + DeepEval: recall@5, MRR, nDCG@10 and faithfulness.
 - Two LLM judges (a local model and Claude) calibrated against 30 of my own labels.
 - Comparisons: dense vs BM25 vs RRF vs reranker, chunk sizes, two embedding models.
