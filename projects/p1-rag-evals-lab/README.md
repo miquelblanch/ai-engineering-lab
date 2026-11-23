@@ -2,7 +2,7 @@
 
 **Question:** does hybrid retrieval (dense + BM25, fused with reciprocal rank fusion) actually beat dense search alone on a real operational corpus, and by how much?
 
-**Status:** corpus and golden set ready; eval harness next.
+**Status:** corpus, golden set and retrieval harness ready; first run next.
 
 ## Two corpora, two roles
 
@@ -35,6 +35,30 @@ Each source is pinned to a commit in [`corpus/sources.toml`](corpus/sources.toml
 ## Private corpus
 
 The harness will read it from a local path given by the `PRIVATE_CORPUS_DIR` environment variable. Nothing from it (documents, questions or per-question results) is committed. `data/private/` is gitignored as a second safety net.
+
+## Hypothesis (written 2026-11-23, before any run)
+
+Written before running anything, so the results can prove me wrong.
+
+1. **Identifier questions (48):** BM25 > RRF > dense. Dense will miss more than expected. *I think: true.*
+2. **Semantic questions (52):** dense > RRF > BM25, with a smaller gap than in (1). *I think: true.*
+3. **All questions:** RRF wins or ties with the best, because it is never the worst in any group. Its value is less about winning than about not losing. *I think: probably true.*
+4. **Risk:** when one retriever is much worse than the other in a group, RRF can end up *below* the best one. Fusing with a bad retriever also subtracts. *I think: false.*
+
+## Retrieval harness
+
+```bash
+ollama pull bge-m3                       # embedding model, ~1.2 GB
+uv sync --group p1                       # numpy
+uv run python projects/p1-rag-evals-lab/eval_retrieval.py
+```
+
+| File | What it does |
+| --- | --- |
+| [`retrieval.py`](retrieval.py) | Chunking (headings, 300-word windows, 50 overlap), BM25 written out, dense cosine over bge-m3 via Ollama, RRF (k=60) |
+| [`eval_retrieval.py`](eval_retrieval.py) | recall@5, MRR and nDCG@10 per system, split by identifier / semantic; counts questions where RRF puts the first relevant document lower than the best single retriever (hypothesis 4) |
+
+Every metric is at document level: a document scores as its best chunk, and each retriever hands its top 20 documents to RRF. The first run embeds ~4,900 chunks once and caches them in `data/cache/` (gitignored). The summary prints as a Markdown table; per-question results go to `runs/`.
 
 ## Plan
 

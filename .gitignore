@@ -12,6 +12,8 @@ __pycache__/
 data/private/
 # Downloaded public corpus: fetched at pinned commits, never redistributed
 data/corpus/
+# Embedding cache, rebuilt from the corpus
+data/cache/
 *.sqlite
 *.db
 
