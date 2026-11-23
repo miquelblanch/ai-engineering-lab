@@ -2,7 +2,7 @@
 
 **Question:** does hybrid retrieval (dense + BM25, fused with reciprocal rank fusion) actually beat dense search alone on a real operational corpus, and by how much?
 
-**Status:** corpus, golden set and retrieval harness ready; first run next.
+**Status:** first retrieval run done (2026-11-23); reranker next.
 
 ## Two corpora, two roles
 
@@ -59,6 +59,29 @@ uv run python projects/p1-rag-evals-lab/eval_retrieval.py
 | [`eval_retrieval.py`](eval_retrieval.py) | recall@5, MRR and nDCG@10 per system, split by identifier / semantic; counts questions where RRF puts the first relevant document lower than the best single retriever (hypothesis 4) |
 
 Every metric is at document level: a document scores as its best chunk, and each retriever hands its top 20 documents to RRF. The first run embeds ~4,900 chunks once and caches them in `data/cache/` (gitignored). The summary prints as a Markdown table; per-question results go to `runs/`.
+
+## Results: first run (2026-11-23)
+
+Public corpus (364 documents, 4,933 chunks), 100 questions, bge-m3 on a Mac Mini M4 Pro. Mean over questions; 1.0 is perfect.
+
+| System | recall@5 (id) | MRR (id) | nDCG@10 (id) | recall@5 (sem) | MRR (sem) | nDCG@10 (sem) | recall@5 (all) | MRR (all) | nDCG@10 (all) |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| BM25 | 0.889 | 0.804 | 0.825 | 0.731 | 0.562 | 0.627 | 0.807 | 0.679 | 0.722 |
+| Dense | 0.955 | 0.781 | 0.817 | 0.885 | 0.711 | 0.778 | 0.918 | 0.745 | 0.797 |
+| **RRF** | **0.955** | **0.895** | **0.912** | **0.923** | **0.748** | **0.793** | **0.938** | **0.818** | **0.850** |
+
+RRF ranks the first relevant document lower than the best single retriever for that question in 13 of 100 questions (5 identifier, 8 semantic).
+
+**Against the hypothesis:**
+
+1. Identifier: partly wrong. BM25 beats dense on MRR only narrowly (0.804 vs 0.781), and dense finds the document in the top 5 more often.
+2. Semantic: partly wrong. Dense beats BM25, but the gap is *larger* than on identifier questions, not smaller.
+3. RRF wins or ties: right, and it wins every group on every metric except a tie on identifier recall@5.
+4. RRF below the best: false on average, true for 13 individual questions.
+
+**My conclusion:** sometimes keyword search is clearly right, sometimes semantic search is, and they fail on different questions. Hybrid search wins for these three corpora (Traefik, Immich, Home Assistant).
+
+**Caveat:** Claude wrote the golden set from the documents themselves, so absolute scores are probably inflated. The comparison between systems is fair: all three took the same test.
 
 ## Plan
 
