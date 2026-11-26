@@ -1,4 +1,4 @@
-"""Rerank the top 20 RRF documents with Claude and test reranker hypotheses H1-H4.
+"""Rerank the top 20 RRF documents with an LLM and test reranker hypotheses H1-H4.
 
 Usage:
     uv run python projects/p1-rag-evals-lab/eval_rerank.py [options]
@@ -6,15 +6,17 @@ Usage:
     --estimate            count input tokens (free endpoint) and print the expected
                           cost of a full run; makes no paid call
     --limit N             only the first N questions (smoke test)
-    --model ID            default claude-opus-5-5 (see rerank.PRICES_USD)
-    --effort LEVEL        low | medium | high (default low)
+    --model ID            default claude-opus-5-5; gpt-6-luna uses OpenAI
+                          (see rerank.PRICES_USD)
+    --effort LEVEL        low | medium | high (default low); OpenAI also "none"
     --order rrf|reversed  order the passages are shown in; "reversed" measures
                           position bias against an "rrf" run
     --eur-per-usd RATE    exchange rate used for the € figures (default 0.86)
     --no-cache            call the API even for prompts already answered
 
-Needs Ollama with bge-m3 (for RRF, as in eval_retrieval.py) and an Anthropic
-API key in ANTHROPIC_API_KEY.
+Needs Ollama with bge-m3 (for RRF, as in eval_retrieval.py) and the API key of
+the model's provider, ANTHROPIC_API_KEY or OPENAI_API_KEY, in the shell or in
+a .env file at the repo root (gitignored).
 
 Hypotheses (README, written 2026-11-26 before any run):
 
@@ -35,6 +37,7 @@ import datetime as dt
 import importlib.util
 import json
 import math
+import os
 import sys
 from pathlib import Path
 
@@ -203,14 +206,50 @@ def estimate(items: list[dict], client, model: str, eur_per_usd: float, out_toke
     total_in = 0
     for item in items:
         prompt = rr.build_prompt(item["q"].question, item["candidates"])
-        total_in += client.messages.count_tokens(
-            model=model, system=rr.SYSTEM, messages=[{"role": "user", "content": prompt}]
-        ).input_tokens
+        total_in += count_input_tokens(client, model, prompt)
     n = len(items)
     usd = rr.cost_usd(model, total_in, out_tokens * n)
     print(f"{n} questions, {total_in:,} input tokens ({total_in / n:,.0f} per question)")
     print(f"assuming ~{out_tokens} output tokens per question (answer + thinking)")
     print(f"expected cost: {usd:.2f} USD = {usd * eur_per_usd:.2f} EUR ({model})")
+
+
+def load_dotenv(path: Path) -> None:
+    """KEY=value lines from a gitignored .env into the environment.
+
+    Variables already set in the shell win. Ten lines instead of a dependency.
+    """
+    if not path.is_file():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            key, value = line.split("=", 1)
+            os.environ.setdefault(key.strip(), value.strip().strip("'\""))
+
+
+def make_client(model: str):
+    """SDK client for the model's provider; each SDK reads its own key from the env."""
+    if rr.provider_of(model) == "openai":
+        import openai  # imported here so the tests need neither SDK
+
+        if not os.environ.get("OPENAI_API_KEY"):
+            raise SystemExit("OPENAI_API_KEY is not set (shell or .env at the repo root)")
+        return openai.OpenAI()
+    import anthropic
+
+    return anthropic.Anthropic()
+
+
+def count_input_tokens(client, model: str, prompt: str) -> int:
+    """Free token-counting endpoint of each provider."""
+    if rr.provider_of(model) == "openai":
+        return client.responses.input_tokens.count(
+            model=model, instructions=rr.SYSTEM, input=prompt
+        ).input_tokens
+    return client.messages.count_tokens(
+        model=model, system=rr.SYSTEM, messages=[{"role": "user", "content": prompt}]
+    ).input_tokens
 
 
 def main() -> None:
@@ -219,7 +258,7 @@ def main() -> None:
     p.add_argument("--est-output-tokens", type=int, default=500)
     p.add_argument("--limit", type=int)
     p.add_argument("--model", default=rr.DEFAULT_MODEL, choices=sorted(rr.PRICES_USD))
-    p.add_argument("--effort", default=rr.DEFAULT_EFFORT, choices=["low", "medium", "high"])
+    p.add_argument("--effort", default=rr.DEFAULT_EFFORT, choices=["none", "low", "medium", "high"])
     p.add_argument("--order", default="rrf", choices=["rrf", "reversed"])
     p.add_argument("--eur-per-usd", type=float, default=0.86)
     p.add_argument("--no-cache", action="store_true")
@@ -229,9 +268,10 @@ def main() -> None:
     p.add_argument("--corpus", type=Path, default=rt.DEFAULT_CORPUS)
     args = p.parse_args()
 
-    import anthropic  # imported here so the tests don't need it
-
-    client = anthropic.Anthropic()
+    if args.effort not in rr.EFFORTS[rr.provider_of(args.model)]:
+        raise SystemExit(f"{args.model} does not take --effort {args.effort}")
+    load_dotenv(rt.REPO_ROOT / ".env")
+    client = make_client(args.model)
     questions = gs.load()[: args.limit]
     chunks = rt.chunk_corpus(rt.load_corpus(args.corpus))
     embedder = rt.ollama_embedder(args.emb_model, args.ollama_url)

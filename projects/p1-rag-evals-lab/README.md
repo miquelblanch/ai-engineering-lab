@@ -97,11 +97,17 @@ A local cross-encoder is left for another round: without it, H4 has no baseline 
 ## LLM reranker
 
 ```bash
-uv sync --group p1                       # adds the anthropic SDK
-export ANTHROPIC_API_KEY=...             # never committed
+uv sync --group p1                       # adds the anthropic and openai SDKs
+# API key in .env at the repo root (gitignored), or exported in the shell:
+#   ANTHROPIC_API_KEY=...   for Claude models
+#   OPENAI_API_KEY=...      for gpt-6-luna
 uv run python projects/p1-rag-evals-lab/eval_rerank.py --estimate   # free: counts tokens, prints expected cost
 uv run python projects/p1-rag-evals-lab/eval_rerank.py --limit 5    # smoke test, a few cents
 uv run python projects/p1-rag-evals-lab/eval_rerank.py              # full run, prints H1-H4
+
+# Same experiment with OpenAI (Responses API):
+uv run python projects/p1-rag-evals-lab/eval_rerank.py --model gpt-6-luna --estimate
+uv run python projects/p1-rag-evals-lab/eval_rerank.py --model gpt-6-luna
 ```
 
 | File | What it does |
@@ -116,6 +122,7 @@ Design choices:
 - **No temperature.** Current Claude models reject `temperature` (the API returns a 400). Reproducibility comes from the cache instead: a rerun reads the stored answers and gives the same numbers for free. `--no-cache` reruns paid, to see how much the answers vary.
 - **Structured output.** A JSON schema forces `{"ranking": [...]}`; repeated or missing numbers are repaired (missing passages keep their RRF position). A refusal, a truncated answer or bad JSON keeps the RRF order and is listed at the end.
 - **Default model `claude-opus-5-5`, effort `low`.** `--model claude-haiku-5-5` is ~40x cheaper and a fair second experiment.
+- **Two providers, one request.** `gpt-*` models go to OpenAI's Responses API with the same system prompt, the same strict JSON schema, no temperature and the same cache. Only the client changes, so a difference in the results is the model's. `gpt-6-luna` costs $0.10 / $0.50 per million tokens (input / output), like Haiku 5.5; its effort also accepts `none` (no reasoning).
 
 ## Plan
 

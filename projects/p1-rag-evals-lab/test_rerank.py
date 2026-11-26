@@ -151,3 +151,62 @@ def test_hypotheses_verdicts():
 def test_p95():
     assert er.p95([float(i) for i in range(1, 101)]) == 95.0
     assert er.p95([2.0]) == 2.0
+
+
+# ---------------------------------------------------------------- OpenAI
+
+
+class FakeOpenAI:
+    """Same idea for the Responses API."""
+
+    def __init__(self, ranking, status="completed", refusal=False):
+        self.calls = []
+        self.ranking, self.status, self.refusal = ranking, status, refusal
+        self.responses = self
+
+    def create(self, **kw):
+        self.calls.append(kw)
+        part = SimpleNamespace(type="refusal" if self.refusal else "output_text")
+        return SimpleNamespace(
+            status=self.status,
+            incomplete_details=SimpleNamespace(reason="max_output_tokens"),
+            output=[SimpleNamespace(type="message", content=[part])],
+            output_text=json.dumps({"ranking": self.ranking}),
+            usage=SimpleNamespace(input_tokens=1000, output_tokens=100),
+        )
+
+
+def test_gpt_models_go_to_openai_with_the_same_prompt_and_schema():
+    client = FakeOpenAI([2, 1, 3])
+    res = rr.LLMReranker(client, model="gpt-6-luna", effort="none").rerank("q", CANDS)
+    assert res.order == ["b.md", "a.md", "c.md"]
+    call = client.calls[0]
+    assert call["instructions"] == rr.SYSTEM
+    assert call["text"]["format"]["schema"] == rr.SCHEMA and call["text"]["format"]["strict"]
+    assert call["reasoning"] == {"effort": "none"}
+    assert "temperature" not in call
+
+
+def test_openai_truncation_and_refusal_keep_rrf_order():
+    cut = rr.LLMReranker(FakeOpenAI([3, 2, 1], status="incomplete"), model="gpt-6-luna")
+    assert cut.rerank("q", CANDS).error == "max_tokens"
+    no = rr.LLMReranker(FakeOpenAI([3, 2, 1], refusal=True), model="gpt-6-luna")
+    res = no.rerank("q", CANDS)
+    assert res.error == "refusal" and res.order == ["a.md", "b.md", "c.md"]
+
+
+def test_effort_must_exist_for_the_provider():
+    with pytest.raises(ValueError):
+        rr.LLMReranker(FakeClient([1]), model="claude-opus-5-5", effort="none")
+
+
+def test_dotenv_loads_keys_without_overriding_the_shell(tmp_path, monkeypatch):
+    env = tmp_path / ".env"
+    env.write_text("# comment\nP1_TEST_A='from-file'\nP1_TEST_B=from-file\n")
+    monkeypatch.setenv("P1_TEST_B", "from-shell")
+    monkeypatch.delenv("P1_TEST_A", raising=False)
+    er.load_dotenv(env)
+    import os
+
+    assert os.environ["P1_TEST_A"] == "from-file"
+    assert os.environ["P1_TEST_B"] == "from-shell"
