@@ -134,6 +134,7 @@ Design choices:
 
 - ~~A hand-labelled golden set~~ Done: [100 questions](golden/README.md), 48 built around exact identifiers and 52 in plain language, each with its source document and a verbatim quote.
 - An eval harness with pytest + DeepEval: recall@5, MRR, nDCG@10 and faithfulness.
+  Practice first: [one exercise per section of the DeepEval course](exercises/deepeval-course.md).
 - Two LLM judges (a local model and Claude) calibrated against 30 of my own labels.
 - Comparisons: dense vs BM25 vs RRF vs reranker, chunk sizes, two embedding models.
 - Traces in Langfuse.
