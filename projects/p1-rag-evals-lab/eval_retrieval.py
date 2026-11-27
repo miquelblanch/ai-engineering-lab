@@ -138,13 +138,19 @@ def run(
 
 
 def summarise(run_data: dict) -> dict:
-    """Mean of each metric per system and question type."""
+    """Mean of each metric per system and question type.
+
+    A group with no questions (a --limit run that only reaches identifier
+    questions, say) is left out instead of dividing by zero.
+    """
     out: dict = {}
     qs = run_data["questions"]
     for s in run_data["config"]["systems"]:
         out[s] = {}
         for group in ("identifier", "semantic", "all"):
             sel = [q for q in qs if group == "all" or q["type"] == group]
+            if not sel:
+                continue
             out[s][group] = {m: sum(q["scores"][s][m] for q in sel) / len(sel) for m in METRICS}
             out[s][group]["n"] = len(sel)
     return out
@@ -168,7 +174,7 @@ def table(summary: dict) -> str:
         "|---|" + "---:|" * (len(groups) * len(METRICS)),
     ]
     for s, by_group in summary.items():
-        cells = [f"{by_group[g][m]:.3f}" for g in groups for m in METRICS]
+        cells = [f"{by_group[g][m]:.3f}" if g in by_group else "-" for g in groups for m in METRICS]
         lines.append(f"| {s} | " + " | ".join(cells) + " |")
     return "\n".join(lines)
 

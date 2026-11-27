@@ -2,7 +2,7 @@
 
 **Question:** does hybrid retrieval (dense + BM25, fused with reciprocal rank fusion) actually beat dense search alone on a real operational corpus, and by how much?
 
-**Status:** first retrieval run done (2026-11-23); reranker next.
+**Status:** first retrieval run done (2026-11-23); LLM reranker built, hypotheses written (2026-11-26), run pending.
 
 ## Two corpora, two roles
 
@@ -47,9 +47,11 @@ Written before running anything, so the results can prove me wrong.
 
 ## Retrieval harness
 
+`bge-m3` is the embedding model (~1.2 GB).
+
 ```bash
-ollama pull bge-m3                       # embedding model, ~1.2 GB
-uv sync --group p1                       # numpy
+ollama pull bge-m3
+uv sync --group p1
 uv run python projects/p1-rag-evals-lab/eval_retrieval.py
 ```
 
@@ -82,6 +84,51 @@ RRF ranks the first relevant document lower than the best single retriever for t
 **My conclusion:** sometimes keyword search is clearly right, sometimes semantic search is, and they fail on different questions. Hybrid search wins for these three corpora (Traefik, Immich, Home Assistant).
 
 **Caveat:** Claude wrote the golden set from the documents themselves, so absolute scores are probably inflated. The comparison between systems is fair: all three took the same test.
+
+## Reranker hypothesis (written 2026-11-26, before any run)
+
+Second experiment: Claude reorders the top 20 documents from RRF (one call per question, listwise). Baseline is the first run: RRF MRR 0.818, 13 questions where RRF ranks the first relevant document below the best single retriever ("weak questions").
+
+1. **H1:** MRR (all questions) goes from 0.818 to **≥ 0.88**. *I think: true.*
+2. **H2:** at least **7 of the 13** weak questions move their first relevant document up. *I think: true.*
+3. **H3:** **no** question that RRF had at position 1 moves down. *I think: true.*
+4. **H4:** cost **< 0.50 €** per question (mean) and latency **< 3 s** per question (p95). *I think: true.*
+
+A local cross-encoder is left for another round: without it, H4 has no baseline to compare against, only a budget.
+
+## LLM reranker
+
+Put the API key in `.env` at the repo root (gitignored) or export it in the shell: `ANTHROPIC_API_KEY` for Claude models, `OPENAI_API_KEY` for `gpt-6-luna`. The blocks below have no comments, so they paste cleanly into zsh.
+
+`--estimate` is free (it only counts tokens), `--limit 5` is a smoke test for a few cents, and the last command is the full run that prints H1-H4:
+
+```bash
+uv sync --group p1
+uv run python projects/p1-rag-evals-lab/eval_rerank.py --estimate
+uv run python projects/p1-rag-evals-lab/eval_rerank.py --limit 5
+uv run python projects/p1-rag-evals-lab/eval_rerank.py
+```
+
+Same experiment with OpenAI (Responses API):
+
+```bash
+uv run python projects/p1-rag-evals-lab/eval_rerank.py --model gpt-6-luna --estimate
+uv run python projects/p1-rag-evals-lab/eval_rerank.py --model gpt-6-luna
+```
+
+| File | What it does |
+| --- | --- |
+| [`rerank.py`](rerank.py) | One passage per candidate (its best chunk), the prompt, a repair step for the model's answer, and the reranker: one Messages API call per question, structured JSON output, answers cached in `data/cache/rerank.jsonl` |
+| [`eval_rerank.py`](eval_rerank.py) | Rebuilds BM25, dense and RRF exactly as `eval_retrieval.py`, reranks the RRF top 20, and checks H1-H4. Tokens, latency and cost of every call go to `runs/` |
+
+Design choices:
+
+- **Listwise, one call per question.** The model sees the 20 passages together and returns their order. Pointwise scoring (one call per passage) avoids position bias but makes 2,000 calls instead of 100 and hits API rate limits. `--order reversed` shows the passages upside down: comparing it with the normal run measures how much position bias there is.
+- **One chunk per document.** The golden set labels documents, but documents can be long. The model reads the chunk that BM25 or dense search ranked highest, which is what a RAG system would pass on. If that chunk is the wrong part of the right document, the reranker can't see it.
+- **No temperature.** Current Claude models reject `temperature` (the API returns a 400). Reproducibility comes from the cache instead: a rerun reads the stored answers and gives the same numbers for free. `--no-cache` reruns paid, to see how much the answers vary.
+- **Structured output.** A JSON schema forces `{"ranking": [...]}`; repeated or missing numbers are repaired (missing passages keep their RRF position). A refusal, a truncated answer or bad JSON keeps the RRF order and is listed at the end.
+- **Default model `claude-opus-5-5`, effort `low`.** `--model claude-haiku-5-5` is ~40x cheaper and a fair second experiment.
+- **Two providers, one request.** `gpt-*` models go to OpenAI's Responses API with the same system prompt, the same strict JSON schema, no temperature and the same cache. Only the client changes, so a difference in the results is the model's. `gpt-6-luna` costs $0.10 / $0.50 per million tokens (input / output), like Haiku 5.5; its effort also accepts `none` (no reasoning).
 
 ## Plan
 

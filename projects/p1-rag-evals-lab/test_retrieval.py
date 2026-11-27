@@ -121,3 +121,16 @@ def test_dense_ranks_by_cosine_and_caches_embeddings(tmp_path):
     calls.clear()
     rt.DenseIndex(chunks, fake_embedder(calls), cache)
     assert calls == []  # second build reads everything from the cache
+
+
+def test_summarise_and_table_skip_empty_groups():
+    """A --limit run can contain only one question type."""
+    one = {"recall@5": 1.0, "MRR": 0.5, "nDCG@10": 0.8}
+    data = {
+        "config": {"systems": ["rrf"]},
+        "questions": [{"type": "identifier", "scores": {"rrf": one}}],
+    }
+    summary = ev.summarise(data)
+    assert "semantic" not in summary["rrf"]
+    assert summary["rrf"]["all"]["MRR"] == 0.5
+    assert "| - |" in ev.table(summary)

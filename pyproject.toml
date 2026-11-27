@@ -15,7 +15,9 @@ dev = [
     "ruff>=0.8",
 ]
 p1 = [
+    "anthropic>=2.14",
     "numpy>=2.0",
+    "openai>=3.60",
 ]
 
 [tool.uv]
