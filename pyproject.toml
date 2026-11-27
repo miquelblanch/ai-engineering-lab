@@ -16,6 +16,7 @@ dev = [
 ]
 p1 = [
     "anthropic>=2.14",
+    "deepeval>=4.3.6",
     "numpy>=2.0",
     "openai>=3.60",
 ]
