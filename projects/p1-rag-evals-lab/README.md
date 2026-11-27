@@ -47,9 +47,11 @@ Written before running anything, so the results can prove me wrong.
 
 ## Retrieval harness
 
+`bge-m3` is the embedding model (~1.2 GB).
+
 ```bash
-ollama pull bge-m3                       # embedding model, ~1.2 GB
-uv sync --group p1                       # numpy
+ollama pull bge-m3
+uv sync --group p1
 uv run python projects/p1-rag-evals-lab/eval_retrieval.py
 ```
 
@@ -96,16 +98,20 @@ A local cross-encoder is left for another round: without it, H4 has no baseline 
 
 ## LLM reranker
 
-```bash
-uv sync --group p1                       # adds the anthropic and openai SDKs
-# API key in .env at the repo root (gitignored), or exported in the shell:
-#   ANTHROPIC_API_KEY=...   for Claude models
-#   OPENAI_API_KEY=...      for gpt-6-luna
-uv run python projects/p1-rag-evals-lab/eval_rerank.py --estimate   # free: counts tokens, prints expected cost
-uv run python projects/p1-rag-evals-lab/eval_rerank.py --limit 5    # smoke test, a few cents
-uv run python projects/p1-rag-evals-lab/eval_rerank.py              # full run, prints H1-H4
+Put the API key in `.env` at the repo root (gitignored) or export it in the shell: `ANTHROPIC_API_KEY` for Claude models, `OPENAI_API_KEY` for `gpt-6-luna`. The blocks below have no comments, so they paste cleanly into zsh.
 
-# Same experiment with OpenAI (Responses API):
+`--estimate` is free (it only counts tokens), `--limit 5` is a smoke test for a few cents, and the last command is the full run that prints H1-H4:
+
+```bash
+uv sync --group p1
+uv run python projects/p1-rag-evals-lab/eval_rerank.py --estimate
+uv run python projects/p1-rag-evals-lab/eval_rerank.py --limit 5
+uv run python projects/p1-rag-evals-lab/eval_rerank.py
+```
+
+Same experiment with OpenAI (Responses API):
+
+```bash
 uv run python projects/p1-rag-evals-lab/eval_rerank.py --model gpt-6-luna --estimate
 uv run python projects/p1-rag-evals-lab/eval_rerank.py --model gpt-6-luna
 ```
